@@ -69,7 +69,7 @@ def assignment_3(gene_name):
             if row['Gene Name'] == gene_name:
                 count += 1
                 list_of_rows.append(row)
-        print '%-24s ' % (filename,), + '\033[1m'
+        print '%-24s ' % (filename,),
         print '%i row(s) found with Gene Name=%r' % (count, gene_name)
         for row in list_of_rows:
             for key in header:
