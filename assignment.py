@@ -10,28 +10,17 @@ VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS', 'TTS',
 
 
 def parse_file(filename):
+    header = get_header(filename)
     with open(filename) as file:
         reader = csv.reader(file, delimiter='\t')
-        header = reader.next()
         for row in reader:
             yield dict(zip(header, (value for value in row)))
 
 
-def get_count(value, col):
-    for filename in FILENAMES:
-        with open(filename) as file:
-            reader = csv.reader(file, delimiter='\t')
-            count = 0
-            for row in reader:
-                if value in row[col]:
-                    count += 1
-            yield count
-
-
-def get_count_lists():
-    for value in VALUES:
-        count_list = list(get_count(value, 7))
-        yield count_list
+def get_header(filename):
+    with open(filename) as file:
+        reader = csv.reader(file, delimiter='\t')
+        return reader.next()
 
 
 # data structure = {value1: [count_f1, countf2, ...],
@@ -50,38 +39,58 @@ def assignment_2():
             print '%-24s' % (count,),
 
 
+def get_count_lists():
+    for value in VALUES:
+        count_list = list(get_count(value, 'Annotation'))
+        yield count_list
+
+
+def get_count(value, col):
+    for filename in FILENAMES:
+        file_data = parse_file(filename)
+        count = 0
+        for row in file_data:
+            if value in row[col]:
+                count += 1
+        yield count
+
+
 # data structure = {filename1: [row1, row2, ...],
 #                   filename2: [row1, row2, ...]}
 
 
-def print_dict(dict):
-    for key in dict:
-        print key,
-        print dict[key],
-        print '\n\t'
-
-
 def assignment_3(gene_name):
     for filename in FILENAMES:
-        with open(filename) as file:
-            print '%-24s' % (filename,)
-            reader = csv.reader(file, delimiter='\t')
-            header = reader.next()
-            for row in reader:
-                if row[15] == gene_name:
-                    row_info = dict(zip(header, row))
-                    print_dict(row_info)
-            print ''
+        file_data = parse_file(filename)
+        header = get_header(filename)
+        count = 0
+        list_of_rows = []
+        for row in file_data:
+            if row['Gene Name'] == gene_name:
+                count += 1
+                list_of_rows.append(row)
+        print '%-24s ' % (filename,), + '\033[1m'
+        print '%i row(s) found with Gene Name=%r' % (count, gene_name)
+        for row in list_of_rows:
+            for key in header:
+                print '%24s: %s' % (key, row[key])
+
+
+def print_dict(dict):
+    for key in dict:
+        print '%24s:' % (key,),
+        print dict[key]
 
 if __name__ == "__main__":
     # assignment_2()
     print '\n'
-    # assignment_3('EMBP1')
+    assignment_3('EMBP1')
 
     # for item in parse_file('test.anno'):
     #     print item
-    for filename in FILENAMES:
-        with open(filename) as file:
-            reader = csv.reader(file, delimiter='\t')
-            # reader.next()
-            print reader.next()[7]
+
+    # for filename in FILENAMES:
+    #     with open(filename) as file:
+    #         reader = csv.reader(file, delimiter='\t')
+    #         # reader.next()
+    #         print reader.next()[7]
