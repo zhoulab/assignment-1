@@ -128,6 +128,8 @@ def get_data(gene_name):
         yield (filename, list_of_rows)
 
 if __name__ == "__main__":
+    print 'Assignment 2:'
     assignment_2()
-    print '\n'
-    assignment_3('EMBP1')
+    print '\n\nAssignment 3:'
+    user_input = raw_input('Enter a gene name: ')
+    assignment_3(user_input)
