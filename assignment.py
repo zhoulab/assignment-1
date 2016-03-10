@@ -69,11 +69,17 @@ def assignment_3(gene_name):
             if row['Gene Name'] == gene_name:
                 count += 1
                 list_of_rows.append(row)
-        print '%-24s ' % (filename,),
-        print '%i row(s) found with Gene Name=%r' % (count, gene_name)
-        for row in list_of_rows:
+        print '\033[1m' + '%-24s ' % (filename,),
+        print '%i row(s) found with Gene Name=%r' % (count, gene_name),
+        print '\033[0m'
+        for i, row in enumerate(list_of_rows):
+            print '\033[1m' + '%i:' % (i + 1,) + '\033[0m'
             for key in header:
-                print '%24s: %s' % (key, row[key])
+                if row[key] == gene_name:
+                    print '\033[1m' + '%24s: %s' % (key, row[key]) + '\033[0m'
+                else:
+                    print '%24s: %s' % (key, row[key])
+        print ''
 
 
 def print_dict(dict):
