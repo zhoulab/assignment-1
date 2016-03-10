@@ -5,11 +5,15 @@ FILENAMES = ['Akdemir_p53_Untr.anno', 'Botcheve_IMR90.anno',
 VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS', 'TTS',
           "5' UTR", "3' UTR"]
 
-# data structure for file = [{header1: value1-1, header2: value1-2, ...}
-#                            {header1: value2-1, header2: value2-2, ...} ...]
-
 
 def parse_file(filename):
+    """
+        Returns parsed data of file in a data structure:
+            [{header1: value1-1, header2: value1-2, ...}
+             {header1: value2-1, header2: value2-2, ...} ...]
+        Where header(j) is the jth header in the file and
+        value(i)-(j) is the value under the jth header and ith row in the file.
+    """
     header = get_header(filename)
     with open(filename) as file:
         reader = csv.reader(file, delimiter='\t')
@@ -18,6 +22,8 @@ def parse_file(filename):
 
 
 def get_header(filename):
+    """Returns the elements of the first row in a list."""
+
     with open(filename) as file:
         reader = csv.reader(file, delimiter='\t')
         return reader.next()
@@ -28,8 +34,14 @@ def get_header(filename):
 
 
 def assignment_2():
-    count_lists = get_count_lists()
-    data = dict(zip(VALUES, count_lists))
+    """
+        Data is fetched from get_count_lists and stored in a variable.
+        Prints data in a formatted output.
+        Data structure:
+            {value1: [count_f1, count_f2, ...],
+             value2: [count_f1, count_f2, ...], ...}
+    """
+    data = dict(zip(VALUES, get_count_lists()))
     print '%24s' % (''),
     for name in FILENAMES:
         print '%-24s' % (name,),
@@ -40,12 +52,27 @@ def assignment_2():
 
 
 def get_count_lists():
+    """
+        For each value, returns a generator object of
+        list of counts for each file.
+
+        Data structure:
+            ([count_f1, count_f2, ...],
+             [count_f1, count_f2, ...], ...)
+    """
     for value in VALUES:
-        count_list = list(get_count(value, 'Annotation'))
+        count_list = get_count(value, 'Annotation')
         yield count_list
 
 
 def get_count(value, col):
+    """
+        For each file, returns a generator object of counts
+        for instances of the value under a column.
+
+        Data structure:
+            (count_f1, count_f2, ...)
+    """
     for filename in FILENAMES:
         file_data = parse_file(filename)
         count = 0
@@ -69,34 +96,35 @@ def assignment_3(gene_name):
             if row['Gene Name'] == gene_name:
                 count += 1
                 list_of_rows.append(row)
-        print '\033[1m' + '%-24s ' % (filename,),
+        print '\033[1m' + '%24s:' % (filename,),
         print '%i row(s) found with Gene Name=%r' % (count, gene_name),
         print '\033[0m'
         for i, row in enumerate(list_of_rows):
             print '\033[1m' + '%i:' % (i + 1,) + '\033[0m'
             for key in header:
+                # special cases to bold Gene Name and truncate PeakID headers
                 if row[key] == gene_name:
                     print '\033[1m' + '%24s: %s' % (key, row[key]) + '\033[0m'
+                elif 'PeakID' in key:
+                    print '%24s: %s' % ('PeakID', row[key])
                 else:
                     print '%24s: %s' % (key, row[key])
         print ''
 
 
-def print_dict(dict):
-    for key in dict:
-        print '%24s:' % (key,),
-        print dict[key]
+def get_data(gene_name):
+    for filename in FILENAMES:
+        file_data = parse_file(filename)
+        header = get_header(filename)
+        count = 0
+        list_of_rows = []
+        for row in file_data:
+            if row['Gene Name'] == gene_name:
+                count += 1
+                list_of_rows.append(row)
+        yield dict(zip(filename, list_of_rows))
 
 if __name__ == "__main__":
     # assignment_2()
-    print '\n'
+    # print '\n'
     assignment_3('EMBP1')
-
-    # for item in parse_file('test.anno'):
-    #     print item
-
-    # for filename in FILENAMES:
-    #     with open(filename) as file:
-    #         reader = csv.reader(file, delimiter='\t')
-    #         # reader.next()
-    #         print reader.next()[7]
