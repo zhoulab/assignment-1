@@ -29,10 +29,6 @@ def get_header(filename):
         return reader.next()
 
 
-# data structure = {value1: [count_f1, countf2, ...],
-#                   value2: [count_f1, countf2, ...], ...}
-
-
 def assignment_2():
     """
         Data is fetched from get_count_lists and stored in a variable.
@@ -82,24 +78,24 @@ def get_count(value, col):
         yield count
 
 
-# data structure = {filename1: [row1, row2, ...],
-#                   filename2: [row1, row2, ...]}
-
-
 def assignment_3(gene_name):
-    for filename in FILENAMES:
-        file_data = parse_file(filename)
+    """
+        Data is fetched from get_data and stored in a variable
+        then printed in a formatted output.
+
+        Data structure:
+            ((filename1, [row1, row2, ...]),
+             (filename2, [row1, row2, ...]), ...)
+    """
+    data = get_data(gene_name)
+    for (filename, list_of_rows) in data:
         header = get_header(filename)
-        count = 0
-        list_of_rows = []
-        for row in file_data:
-            if row['Gene Name'] == gene_name:
-                count += 1
-                list_of_rows.append(row)
         print '\033[1m' + '%24s:' % (filename,),
-        print '%i row(s) found with Gene Name=%r' % (count, gene_name),
+        print '%i row(s) found with Gene Name=%r' % (len(list_of_rows),
+                                                     gene_name),
         print '\033[0m'
         for i, row in enumerate(list_of_rows):
+            # print row number for formatted list
             print '\033[1m' + '%i:' % (i + 1,) + '\033[0m'
             for key in header:
                 # special cases to bold Gene Name and truncate PeakID headers
@@ -113,18 +109,25 @@ def assignment_3(gene_name):
 
 
 def get_data(gene_name):
+    """
+        For each file, returns generator object of tuple with
+        filename and list of rows containing matching gene name.
+
+        Data structure:
+            ((filename1, [row1, row2, ...]),
+             (filename2, [row1, row2, ...]), ...)
+    """
     for filename in FILENAMES:
         file_data = parse_file(filename)
-        header = get_header(filename)
         count = 0
         list_of_rows = []
         for row in file_data:
             if row['Gene Name'] == gene_name:
                 count += 1
                 list_of_rows.append(row)
-        yield dict(zip(filename, list_of_rows))
+        yield (filename, list_of_rows)
 
 if __name__ == "__main__":
-    # assignment_2()
-    # print '\n'
+    assignment_2()
+    print '\n'
     assignment_3('EMBP1')
