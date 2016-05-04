@@ -9,8 +9,8 @@ VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS', 'TTS',
 def parse_file(filename):
     """
         Returns parsed data of file in a data structure:
-            [{header1: value1-1, header2: value1-2, ...}
-             {header1: value2-1, header2: value2-2, ...} ...]
+            ({header1: value1-1, header2: value1-2, ...}
+             {header1: value2-1, header2: value2-2, ...} ...)
         Where header(j) is the jth header in the file and
         value(i)-(j) is the value under the jth header and ith row in the file.
     """
