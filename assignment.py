@@ -4,6 +4,9 @@ FILENAMES = ['Akdemir_p53_Untr.anno', 'Botcheve_IMR90.anno',
              'Younger_Human_ChIP.anno', 'Akdemir_p53_DOX.anno']
 SEARCH_VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS',
                  'TTS', "5' UTR", "3' UTR"]
+OUTPUT_ANNOTATION = "annotation_output.txt"
+OUTPUT_GENE_FILES = [filename[:filename.index(".anno")] + "_gene_output.txt"
+                     for filename in FILENAMES]
 
 
 def parse_file(filename):
@@ -24,7 +27,7 @@ def parse_file(filename):
             yield dict(zip(header, (value for value in row)))
 
 
-def assignment_2(col, values, files):
+def get_occurence_counts(col, values, files):
     """
         Data is fetched from get_count_lists and stored in a variable.
         Prints data in a formatted output.
@@ -43,16 +46,14 @@ def assignment_2(col, values, files):
         data: {value1: [count_f1, count_f2, ...],
                value2: [count_f1, count_f2, ...], ...}
     """
-    data = dict(zip(values, [get_count(col, value, files)
-                             for value in values]))
-    print '\033[1m' + '%-24s' % ('Values'),
-    for filename in files:
-        print '%-24s' % (filename[:filename.index(".")],),
-    print '\033[0m',
-    for value in values:
-        print '\n%-24s' % (value,),
-        for count in data[value]:
-            print '%-24s' % (count,),
+    # data = dict(zip(values, [get_count(col, value, files)
+    #                          for value in values]))
+    with open(OUTPUT_ANNOTATION, 'w') as file:
+        filewriter = csv.writer(file, delimiter='\t')
+        filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
+                                          for filename in files])
+        for value in values:
+            filewriter.writerow([value] + list(get_count(col, value, files)))
 
 
 def get_count(col, value, files):
@@ -67,7 +68,7 @@ def get_count(col, value, files):
         yield len(get_occurences(col, value, filename, False))
 
 
-def get_occurrences_of_gene(gene_name, files):
+def find_locations_of_gene(gene_name, files):
     """
         Data is fetched from get_occurences and stored in a variable
         then printed in a formatted output.
@@ -127,11 +128,14 @@ def get_occurences(col, value, filename, exact=True):
                 list_of_rows.append(row)
     return list_of_rows
 
-if __name__ == "__main__":
-    print 'Finding occurences of values under the "Annotation" column.', \
-          '(does not have to be exact match)'
-    assignment_2('Annotation', SEARCH_VALUES, FILENAMES)
 
-    print '\n\nFinding occurences of a gene under the "Gene Name" column.'
+if __name__ == "__main__":
+    print 'Finding occurences of values under the "Annotation" column... ', \
+          '(does not have to be exact match)'
+    get_occurence_counts('Annotation', SEARCH_VALUES, FILENAMES)
+    print 'Done. Output file is: \'%s\'' % OUTPUT_ANNOTATION
+    print 'Find occurences of a gene under the "Gene Name" column.'
     user_input = raw_input('Enter a gene name: ')
-    get_occurrences_of_gene(user_input, FILENAMES)
+    print 'Finding...'
+    find_locations_of_gene(user_input, FILENAMES)
+    print 'Done.'
