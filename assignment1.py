@@ -1,12 +1,16 @@
 import os
 import csv
 
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+
 SEARCH_VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS',
                  'TTS', "5' UTR", "3' UTR"]
-OUTPUT_ANNOTATION = "annotation_output.txt"
 OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.getcwd()), 'results')
 if not os.path.exists(OUTPUT_DIRECTORY):
     os.makedirs(OUTPUT_DIRECTORY)
+
+FOLDERS = ['Dm', 'Mammals']
 
 
 def parse_file(filename):
@@ -27,13 +31,17 @@ def parse_file(filename):
             yield dict(zip(header, (value for value in row)))
 
 
-def get_occurence_counts(col, values, files):
+def get_occurence_counts(folder, pth, col, values, files):
     """
         Data is fetched from get_count_lists and stored in a variable.
         Writes data into CSV file.
 
         Parameters
         ----------
+        folder: str
+            Name of folder that files are under
+        pth: str
+            Path of *folder* directory
         col: str
             Column of .anno file to search under
         values: list of str
@@ -45,26 +53,30 @@ def get_occurence_counts(col, values, files):
         ---------------
         data: {value1: [count_f1, count_f2, ...],
                value2: [count_f1, count_f2, ...], ...}
+        file_data: {fname1: {v1: count_v1, v2: count_v2, ...},
+                    fname2: {v1: count_v1, v2: count_v2, ...}, ...}
     """
-    # data = dict(zip(values, [get_count(col, value, files)
-    #                          for value in values]))
-    with open(os.path.join(OUTPUT_DIRECTORY, OUTPUT_ANNOTATION), 'w') as file:
+    with open(os.path.join(OUTPUT_DIRECTORY, folder + '-results.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
         filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
                                           for filename in files])
         data = []
         for value in values:
             print 'Getting counts for value: ' + value + '...'
-            row = list(get_count(col, value, files))
+            row = list(get_count(col, value, [os.path.join(pth, f) for f in files]))
             filewriter.writerow([value] + row)
             data.append(row)
         print 'Getting column totals...'
         filewriter.writerow(['Total'] + [sum(x) for x in zip(*data)])
 
-        # pie_plot(data, files)
+        print 'Making pie plots'
+        file_data = {}
+        for i, file_counts in enumerate(zip(*data)):
+            file_data[files[i]] = dict(zip(SEARCH_VALUES, file_counts))
+        pie_plot(file_data, folder)
 
 
-def get_count(col, value, files):
+def get_count(col, value, filepaths):
     """
         Returns
         -------
@@ -72,46 +84,41 @@ def get_count(col, value, files):
             Generator object of counts for instances of *value* under *col*
             (value does not have to be exact match)
     """
-    for filename in files:
-        yield len(get_occurences(col, value, filename, False))
+    for filepath in filepaths:
+        yield len(get_occurences(col, value, filepath, False))
 
 
-def pie_plot(filenames, rows):
-    for i, file in enumerate(files):
-        pass
+def pie_plot(file_data, folder):
+    plots_dir = os.path.join(os.path.dirname(os.getcwd()), folder + '_plots')
+    if not os.path.exists(plots_dir):
+        os.makedirs(plots_dir)
 
+    fontP = FontProperties()
+    fontP.set_size('small')
 
-def find_locations_of_gene(gene_name, files):
-    """
-        Data is fetched from get_occurences and stored in a variable
-        then printed in a formatted output.
+    for i, file in enumerate(file_data.keys()):
+        if sum(file_data[file].values()) is 0:
+            print 'No counts for {}.'.format(file)
+            continue
+        ax = plt.subplot(111)
+        ax.axis('equal')
 
-        Parameters
-        ----------
-        gene_name: str
-            Gene name to search for under the column 'Gene Name'
-        files: list of str
+        counts = [file_data[file][value] for value in SEARCH_VALUES]
+        colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0', '#B2912F',
+                  '#B276B2', '#DECF3F']
+        plt.title(file[:-5])
+        wedges, texts = plt.pie(counts, colors=colors, startangle=90)
+        for w in wedges:
+            w.set_linewidth(0)
 
-        Data Structures
-        ---------------
-        data: [(filename1, [row1, row2, ...]),
-               (filename2, [row1, row2, ...]), ...]
-    """
-    data = [(filename, get_occurences('Gene Name', gene_name, filename))
-            for filename in files]
-    for (filename, list_of_rows) in data:
-        print '\033[1m' + '%s:' % (filename[:filename.index(".")],),
-        print '%i row(s) found with Gene Name=%r' % (len(list_of_rows),
-                                                     gene_name),
-        print '\033[0m'
-        if list_of_rows:
-            print '%-3s%-16s%-16s%-8s' % ("#", "Start", "End", "Length")
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
-        for (i, row) in enumerate(list_of_rows):
-            start = int(row["Start"])
-            end = int(row["End"])
-            print '%-3i%-16i%-16i%-8i' % (i + 1, start, end, end - start + 1)
-        print
+        labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] / float(sum(file_data[file].values())))
+                  for value in SEARCH_VALUES]
+        ax.legend(wedges, labels, loc='center left', bbox_to_anchor=(1, .5), prop=fontP)
+        plt.savefig(os.path.join(plots_dir, file[:-5] + '.jpg'))
+        plt.gcf().clear()
 
 
 def get_occurences(col, value, filename, exact=True):
@@ -143,19 +150,11 @@ def get_occurences(col, value, filename, exact=True):
 
 
 if __name__ == "__main__":
-    print 'Finding occurences of values under the "Annotation" column... ', \
-          '(does not have to be exact match)'
+    for folder in FOLDERS:
+        print '%s: finding occurences of values under the "Annotation" column... ' % folder
+        pth = os.path.join(os.path.dirname(os.getcwd()), folder)
+        files = next(os.walk(pth))[2]
 
-    os.chdir('..')
-    os.chdir('Dm')
-    files = next(os.walk('.'))[2]
-
-    print files
-
-    get_occurence_counts('Annotation', SEARCH_VALUES, [file for file in files if '.anno' in file])
-    print 'Done. Output file is: \'%s\'' % OUTPUT_ANNOTATION
-    print 'Find occurences of a gene under the "Gene Name" column.'
-    user_input = raw_input('Enter a gene name: ')
-    print 'Finding...'
-    find_locations_of_gene(user_input, [file for file in files if '.anno' in file])
-    print 'Done.'
+        get_occurence_counts(folder, pth, 'Annotation', SEARCH_VALUES,
+                             [file for file in files if '.anno' in file])
+        print 'Done. Output file is: \'%s\'' % (folder + '-results.txt')
