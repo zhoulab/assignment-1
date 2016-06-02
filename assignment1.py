@@ -1,12 +1,12 @@
+import os
 import csv
 
-FILENAMES = ['Akdemir_p53_Untr.anno', 'Botcheve_IMR90.anno',
-             'Younger_Human_ChIP.anno', 'Akdemir_p53_DOX.anno']
 SEARCH_VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS',
                  'TTS', "5' UTR", "3' UTR"]
 OUTPUT_ANNOTATION = "annotation_output.txt"
-OUTPUT_GENE_FILES = [filename[:filename.index(".anno")] + "_gene_output.txt"
-                     for filename in FILENAMES]
+OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.getcwd()), 'results')
+if not os.path.exists(OUTPUT_DIRECTORY):
+    os.makedirs(OUTPUT_DIRECTORY)
 
 
 def parse_file(filename):
@@ -30,7 +30,7 @@ def parse_file(filename):
 def get_occurence_counts(col, values, files):
     """
         Data is fetched from get_count_lists and stored in a variable.
-        Prints data in a formatted output.
+        Writes data into CSV file.
 
         Parameters
         ----------
@@ -48,12 +48,20 @@ def get_occurence_counts(col, values, files):
     """
     # data = dict(zip(values, [get_count(col, value, files)
     #                          for value in values]))
-    with open(OUTPUT_ANNOTATION, 'w') as file:
+    with open(os.path.join(OUTPUT_DIRECTORY, OUTPUT_ANNOTATION), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
         filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
                                           for filename in files])
+        data = []
         for value in values:
-            filewriter.writerow([value] + list(get_count(col, value, files)))
+            print 'Getting counts for value: ' + value + '...'
+            row = list(get_count(col, value, files))
+            filewriter.writerow([value] + row)
+            data.append(row)
+        print 'Getting column totals...'
+        filewriter.writerow(['Total'] + [sum(x) for x in zip(*data)])
+
+        # pie_plot(data, files)
 
 
 def get_count(col, value, files):
@@ -66,6 +74,11 @@ def get_count(col, value, files):
     """
     for filename in files:
         yield len(get_occurences(col, value, filename, False))
+
+
+def pie_plot(filenames, rows):
+    for i, file in enumerate(files):
+        pass
 
 
 def find_locations_of_gene(gene_name, files):
@@ -132,10 +145,17 @@ def get_occurences(col, value, filename, exact=True):
 if __name__ == "__main__":
     print 'Finding occurences of values under the "Annotation" column... ', \
           '(does not have to be exact match)'
-    get_occurence_counts('Annotation', SEARCH_VALUES, FILENAMES)
+
+    os.chdir('..')
+    os.chdir('Dm')
+    files = next(os.walk('.'))[2]
+
+    print files
+
+    get_occurence_counts('Annotation', SEARCH_VALUES, [file for file in files if '.anno' in file])
     print 'Done. Output file is: \'%s\'' % OUTPUT_ANNOTATION
     print 'Find occurences of a gene under the "Gene Name" column.'
     user_input = raw_input('Enter a gene name: ')
     print 'Finding...'
-    find_locations_of_gene(user_input, FILENAMES)
+    find_locations_of_gene(user_input, [file for file in files if '.anno' in file])
     print 'Done.'
