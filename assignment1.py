@@ -121,13 +121,13 @@ def pie_plot(file_data, folder):
         plt.gcf().clear()
 
 
-def get_occurences(col, value, filename, exact=True):
+def get_occurences(col, value, filepath, exact=True):
     """
         Parameters
         ----------
         col: str
         value: str
-        filename: str
+        filepath: str
         exact: bool
             True:   will look for exact value under *col*
             False:  will look for values under *col* that contain *value*
@@ -137,7 +137,7 @@ def get_occurences(col, value, filename, exact=True):
         [row1, row2, ...]
             List of rows containing matching *value* under *col*.
     """
-    file_data = parse_file(filename)
+    file_data = parse_file(filepath)
     list_of_rows = []
     for row in file_data:
         if exact:
