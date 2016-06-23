@@ -6,11 +6,17 @@ from matplotlib.font_manager import FontProperties
 
 SEARCH_VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS',
                  'TTS', "5' UTR", "3' UTR"]
-OUTPUT_DIRECTORY = os.path.join(os.path.dirname(os.getcwd()), 'results')
+
+BASE_DIR = os.path.dirname(os.getcwd())
+OUTPUT_DIRECTORY = os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results')
 if not os.path.exists(OUTPUT_DIRECTORY):
     os.makedirs(OUTPUT_DIRECTORY)
 
-FOLDERS = ['Dm', 'Mammals']
+PLOTS_DIR = os.path.join(OUTPUT_DIRECTORY, 'plots')
+if not os.path.exists(PLOTS_DIR):
+    os.makedirs(PLOTS_DIR)
+
+FOLDERS = [os.path.join(BASE_DIR, 'data/Annos', f) for f in ['Dm', 'Mammals']]
 
 
 def parse_file(filename):
@@ -31,15 +37,13 @@ def parse_file(filename):
             yield dict(zip(header, (value for value in row)))
 
 
-def get_occurence_counts(folder, pth, col, values, files):
+def get_occurence_counts(pth, col, values, files, plots_dir):
     """
         Data is fetched from get_count_lists and stored in a variable.
         Writes data into CSV file.
 
         Parameters
         ----------
-        folder: str
-            Name of folder that files are under
         pth: str
             Path of *folder* directory
         col: str
@@ -56,6 +60,7 @@ def get_occurence_counts(folder, pth, col, values, files):
         file_data: {fname1: {v1: count_v1, v2: count_v2, ...},
                     fname2: {v1: count_v1, v2: count_v2, ...}, ...}
     """
+    folder = os.path.basename(pth)
     with open(os.path.join(OUTPUT_DIRECTORY, folder + '-results.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
         filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
@@ -73,7 +78,7 @@ def get_occurence_counts(folder, pth, col, values, files):
         file_data = {}
         for i, file_counts in enumerate(zip(*data)):
             file_data[files[i]] = dict(zip(SEARCH_VALUES, file_counts))
-        pie_plot(file_data, folder)
+        pie_plot(file_data, folder, plots_dir)
 
 
 def get_count(col, value, filepaths):
@@ -88,11 +93,7 @@ def get_count(col, value, filepaths):
         yield len(get_occurences(col, value, filepath, False))
 
 
-def pie_plot(file_data, folder):
-    plots_dir = os.path.join(os.path.dirname(os.getcwd()), folder + '_plots')
-    if not os.path.exists(plots_dir):
-        os.makedirs(plots_dir)
-
+def pie_plot(file_data, folder, plots_dir):
     fontP = FontProperties()
     fontP.set_size('small')
 
@@ -150,11 +151,13 @@ def get_occurences(col, value, filepath, exact=True):
 
 
 if __name__ == "__main__":
-    for folder in FOLDERS:
-        print '%s: finding occurences of values under the "Annotation" column... ' % folder
-        pth = os.path.join(os.path.dirname(os.getcwd()), folder)
-        files = next(os.walk(pth))[2]
+    for folder_path in FOLDERS:
+        fname = os.path.basename(folder_path)
+        print ('{}: finding occurences of values under the '
+               '"Annotation" column... ').format(fname)
+        files = next(os.walk(folder_path))[2]
 
-        get_occurence_counts(folder, pth, 'Annotation', SEARCH_VALUES,
-                             [file for file in files if '.anno' in file])
-        print 'Done. Output file is: \'%s\'' % (folder + '-results.txt')
+        get_occurence_counts(folder_path, 'Annotation', SEARCH_VALUES,
+                             [file for file in files if '.anno' in file],
+                             PLOTS_DIR)
+        print 'Done. Output file is: "{}"'.format(fname + '-results.txt')

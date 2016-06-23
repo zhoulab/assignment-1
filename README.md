@@ -1,12 +1,12 @@
-# assignment-1
+# p53-chip-seq-anno
 
 Generate anno parsing results table and figures for P53 project
 
-run script: `python assignment1.py`
+run script: `python P53_ChIPSeq_Anno.py`
 
 ## About
 
-The purpose of this assignment is identify patterns in annotation distribution (%) from the data source.
+The purpose of this script is identify patterns in annotation distribution (%) from the data source.
 
 ## Data Source
 
@@ -37,25 +37,37 @@ All other dependencies are included in the python standard library.
 
 ## Directory tree
 
-The following directory tree is assumed by `assignment1.py`:
+The following directory tree is assumed by `P53_ChIPSeq_Anno.py`:
 
 ```
-Assignment1
+BASE_DIR
 │
-├───assignment1 (this Git repository)
-│   │   assignment1.py
+├───p53-chip-seq-anno (this Git repository)
+│   │   P53_ChIPSeq_Anno.py
 │   │   ...
 │
-├───Dm
-│   │   R_P53_NT60_M14.anno
-│   │   R_P53_XR60_M14.anno
-│   │   R_P53NT60_A.anno
-│   │   ...
+├───data
+│   └───Annos
+│       ├───Dm
+│       │   │   R_P53_NT60_M14.anno
+│       │   │   R_P53_XR60_M14.anno
+│       │   │   R_P53NT60_A.anno
+│       │   │   ...
+│       │
+│       └───Mammals
+│           │   Akdemir_p53_DOX.anno
+│           │   Akdemir_p53_RA.anno
+│           │   Akdemir_p53_Untr.anno
+│           │   ...
 │
-└───Mammals
-    │   Akdemir_p53_DOX.anno
-    │   Akdemir_p53_RA.anno
-    │   Akdemir_p53_Untr.anno
-    │   ...
+└───results
+    └───P53-ChIPSeq-Anno-results
+        │   Dm-results.txt
+        │   Mammals-results.txt
+        │
+        └───plots
+            │   R_P53_NT60_M14.jpg
+            │   Akdemir_p53_DOX.jpg
+            │   ...
 
 ```
