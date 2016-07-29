@@ -12,23 +12,6 @@ The purpose of this script is identify patterns in annotation distribution (%) f
 
 .anno (tab-delimited text) files from Homer annotation output of P53 ChIP-seq; .bed format files
 
-## Process
-
-For each .anno file in the Dm and Mammals directories, get occurence counts under the 'Annotation' column for:
-
-1. non-coding
-2. Intergenic
-3. intron
-4. exon
-5. promoter-TSS
-6. TTS
-7. 5' UTR
-8. 3' UTR
-
-Output a summary .txt (tab-delimited text) file for each anno folder including total counts for each .anno file.
-
-Generate pie charts for each file with a consistent color-to-value legend.
-
 ## Requirements
 
 1. `matplotlib` (for pie charts)
