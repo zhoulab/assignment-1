@@ -1,5 +1,6 @@
 import os
 import csv
+from collections import OrderedDict
 
 BASE_DIR = os.path.dirname(os.getcwd())
 
@@ -23,21 +24,20 @@ def parse_anno_file(fpath):
             yield dict(zip(header, (value for value in row)))
 
 
-def get_occurence_counts(pth, col, values, files, output_dir, plots_dir):
+def get_occurence_counts(fpaths, col, values, output_dir, plots_dir, val_colors):
     """
         Data is fetched from get_count_lists and stored in a variable.
         Writes data into CSV file.
 
         Parameters
         ----------
-        pth: str
-            Path of *folder* directory
+        fpaths: list of filepaths
+            Filepaths of .anno files to search
+            must be under the same folder
         col: str
             Column of .anno file to search under
         values: list of str
             Values to search for under col
-        files: list of str
-            Filenames of .anno files to search
 
         Data Structures
         ---------------
@@ -46,25 +46,25 @@ def get_occurence_counts(pth, col, values, files, output_dir, plots_dir):
         file_data: {fname1: {v1: count_v1, v2: count_v2, ...},
                     fname2: {v1: count_v1, v2: count_v2, ...}, ...}
     """
-    folder = os.path.basename(pth)
+    folder = os.path.basename(os.path.dirname(fpaths[0]))
+    files = [os.path.basename(path) for path in fpaths]
     with open(os.path.join(output_dir, folder + '-results.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
-        filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
-                                          for filename in files])
+        filewriter.writerow(['Values'] + [fname[:fname.index(".anno")]
+                                          for fname in files])
         data = []
         for value in values:
             print 'Getting counts for value: ' + value + '...'
-            row = list(get_count(col, value, [os.path.join(pth, f) for f in files]))
+            row = list(get_count(col, value, fpaths))
             filewriter.writerow([value] + row)
             data.append(row)
         print 'Getting column totals...'
         filewriter.writerow(['Total'] + [sum(x) for x in zip(*data)])
 
         print 'Making pie plots'
-        file_data = {}
-        for i, file_counts in enumerate(zip(*data)):
-            file_data[files[i]] = dict(zip(values, file_counts))
-        pie_plot(file_data, values, folder, plots_dir)
+        file_data = {files[i]: OrderedDict(zip(values, file_counts))
+                     for i, file_counts in enumerate(zip(*data))}
+        pie_plot(file_data, values, val_colors, plots_dir)
 
 
 def get_count(col, value, filepaths):
@@ -79,14 +79,30 @@ def get_count(col, value, filepaths):
         yield len(list(get_occurences(col, value, filepath, exact=False)))
 
 
-def pie_plot(file_data, values, folder, plots_dir):
+def pie_plot(file_data, values, colors, plots_dir):
+    """Create pie plots for each file in `file_data.keys()`
+
+    Parameters
+    ----------
+    file_data : dict
+        {fname1: {v1: count_v1, v2: count_v2, ...},
+         fname2: {v1: count_v1, v2: count_v2, ...}, ...}
+    values : list of str
+    colors : list of str
+        hex colors for corresponding element in ordered `values`
+    plots_dir : filepath (str)
+        directory to save plot JPEGs
+    """
     import matplotlib.pyplot as plt
     from matplotlib.font_manager import FontProperties
 
     font_props = FontProperties()
     font_props.set_size('small')
 
-    for i, file in enumerate(file_data.keys()):
+    for file in file_data.keys():
+        if sorted(file_data[file].keys()) != sorted(values):
+            print 'Search values do not match for {}.'.format(file)
+            continue
         if sum(file_data[file].values()) is 0:
             print 'No counts for {}.'.format(file)
             continue
@@ -94,8 +110,6 @@ def pie_plot(file_data, values, folder, plots_dir):
         ax.axis('equal')
 
         counts = [file_data[file][value] for value in values]
-        colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0', '#B2912F',
-                  '#B276B2', '#DECF3F']
         plt.title(file[:-5])
         wedges, texts = plt.pie(counts, colors=colors, startangle=90)
         for w in wedges:
@@ -139,6 +153,8 @@ def get_occurences(col, values, filepath, exact=True):
 def do_anno_analysis():
     search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
                      'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
+    val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
+                  '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
     output_dir = os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results')
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -146,14 +162,18 @@ def do_anno_analysis():
     if not os.path.exists(plots_dir):
         os.makedirs(plots_dir)
 
-    folders = [os.path.join(BASE_DIR, 'data/Annos', f) for f in ['Dm', 'Mammals']]
+    folders = [os.path.join(BASE_DIR, 'data/Annos', f)
+               for f in ['Dm', 'Mammals']]
     for folder_path in folders:
-        fname = os.path.basename(folder_path)
+        dir_name = os.path.basename(folder_path)
         print ('{}: finding occurences of values under the '
-               '"Annotation" column... ').format(fname)
-        files = next(os.walk(folder_path))[2]
+               '"Annotation" column... ').format(dir_name)
+        anno_fpaths = [os.path.join(folder_path, f)
+                       for f in next(os.walk(folder_path))[2]
+                       if '.anno' in f]
 
-        get_occurence_counts(folder_path, 'Annotation', search_values,
-                             [file for file in files if '.anno' in file],
-                             output_dir, plots_dir)
-        print 'Done. Output file is: "{}"'.format(fname + '-results.txt')
+        get_occurence_counts(anno_fpaths, 'Annotation', search_values,
+                             output_dir, plots_dir, val_colors)
+        print 'Done. Output file is: "{}"'.format(dir_name + '-results.txt')
+
+
