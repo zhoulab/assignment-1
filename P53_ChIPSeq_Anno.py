@@ -1,25 +1,10 @@
 import os
 import csv
 
-import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
-
-SEARCH_VALUES = ['non-coding', 'Intergenic', 'intron', 'exon', 'promoter-TSS',
-                 'TTS', "5' UTR", "3' UTR"]
-
 BASE_DIR = os.path.dirname(os.getcwd())
-OUTPUT_DIRECTORY = os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results')
-if not os.path.exists(OUTPUT_DIRECTORY):
-    os.makedirs(OUTPUT_DIRECTORY)
-
-PLOTS_DIR = os.path.join(OUTPUT_DIRECTORY, 'plots')
-if not os.path.exists(PLOTS_DIR):
-    os.makedirs(PLOTS_DIR)
-
-FOLDERS = [os.path.join(BASE_DIR, 'data/Annos', f) for f in ['Dm', 'Mammals']]
 
 
-def parse_file(filename):
+def parse_anno_file(fpath):
     """
         Returns a generator object with each row in dictionary format.
 
@@ -30,14 +15,15 @@ def parse_file(filename):
             Where header(j) is the jth header in the file and
             value(i)-(j) is the value under the jth header and ith row in file.
     """
-    with open(filename) as file:
-        reader = csv.reader(file, delimiter='\t')
-        header = reader.next()
+    with open(fpath) as f:
+        reader = csv.reader(f, delimiter='\t')
+        header = ['PeakID' if 'PeakID' in col_name else col_name
+                  for col_name in reader.next()]
         for row in reader:
             yield dict(zip(header, (value for value in row)))
 
 
-def get_occurence_counts(pth, col, values, files, plots_dir):
+def get_occurence_counts(pth, col, values, files, output_dir, plots_dir):
     """
         Data is fetched from get_count_lists and stored in a variable.
         Writes data into CSV file.
@@ -61,7 +47,7 @@ def get_occurence_counts(pth, col, values, files, plots_dir):
                     fname2: {v1: count_v1, v2: count_v2, ...}, ...}
     """
     folder = os.path.basename(pth)
-    with open(os.path.join(OUTPUT_DIRECTORY, folder + '-results.txt'), 'w') as file:
+    with open(os.path.join(output_dir, folder + '-results.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
         filewriter.writerow(['Values'] + [filename[:filename.index(".anno")]
                                           for filename in files])
@@ -77,8 +63,8 @@ def get_occurence_counts(pth, col, values, files, plots_dir):
         print 'Making pie plots'
         file_data = {}
         for i, file_counts in enumerate(zip(*data)):
-            file_data[files[i]] = dict(zip(SEARCH_VALUES, file_counts))
-        pie_plot(file_data, folder, plots_dir)
+            file_data[files[i]] = dict(zip(values, file_counts))
+        pie_plot(file_data, values, folder, plots_dir)
 
 
 def get_count(col, value, filepaths):
@@ -90,12 +76,15 @@ def get_count(col, value, filepaths):
             (value does not have to be exact match)
     """
     for filepath in filepaths:
-        yield len(get_occurences(col, value, filepath, False))
+        yield len(list(get_occurences(col, value, filepath, exact=False)))
 
 
-def pie_plot(file_data, folder, plots_dir):
-    fontP = FontProperties()
-    fontP.set_size('small')
+def pie_plot(file_data, values, folder, plots_dir):
+    import matplotlib.pyplot as plt
+    from matplotlib.font_manager import FontProperties
+
+    font_props = FontProperties()
+    font_props.set_size('small')
 
     for i, file in enumerate(file_data.keys()):
         if sum(file_data[file].values()) is 0:
@@ -104,7 +93,7 @@ def pie_plot(file_data, folder, plots_dir):
         ax = plt.subplot(111)
         ax.axis('equal')
 
-        counts = [file_data[file][value] for value in SEARCH_VALUES]
+        counts = [file_data[file][value] for value in values]
         colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0', '#B2912F',
                   '#B276B2', '#DECF3F']
         plt.title(file[:-5])
@@ -116,48 +105,55 @@ def pie_plot(file_data, folder, plots_dir):
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
         labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] / float(sum(file_data[file].values())))
-                  for value in SEARCH_VALUES]
-        ax.legend(wedges, labels, loc='center left', bbox_to_anchor=(1, .5), prop=fontP)
+                  for value in values]
+        ax.legend(wedges, labels, loc='center left', bbox_to_anchor=(1, .5), prop=font_props)
         plt.savefig(os.path.join(plots_dir, file[:-5] + '.jpg'))
         plt.gcf().clear()
 
 
-def get_occurences(col, value, filepath, exact=True):
+def get_occurences(col, values, filepath, exact=True):
     """
         Parameters
         ----------
         col: str
-        value: str
+        values: str or list
         filepath: str
-        exact: bool
-            True:   will look for exact value under *col*
-            False:  will look for values under *col* that contain *value*
 
         Returns
         -------
-        [row1, row2, ...]
-            List of rows containing matching *value* under *col*.
+        (row1, row2, ...)
+            Iterable of rows containing matching *value* under *col*.
     """
-    file_data = parse_file(filepath)
-    list_of_rows = []
+    if type(values) is str:
+        values = [values]
+    file_data = parse_anno_file(filepath)
     for row in file_data:
         if exact:
-            if value == row[col]:
-                list_of_rows.append(row)
+            if row[col] in values:
+                yield row
         else:
-            if value in row[col]:
-                list_of_rows.append(row)
-    return list_of_rows
+            if any([val in row[col] for val in values]):
+                yield row
 
 
-if __name__ == "__main__":
-    for folder_path in FOLDERS:
+def do_anno_analysis():
+    search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
+                     'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
+    output_dir = os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results')
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    plots_dir = os.path.join(output_dir, 'plots')
+    if not os.path.exists(plots_dir):
+        os.makedirs(plots_dir)
+
+    folders = [os.path.join(BASE_DIR, 'data/Annos', f) for f in ['Dm', 'Mammals']]
+    for folder_path in folders:
         fname = os.path.basename(folder_path)
         print ('{}: finding occurences of values under the '
                '"Annotation" column... ').format(fname)
         files = next(os.walk(folder_path))[2]
 
-        get_occurence_counts(folder_path, 'Annotation', SEARCH_VALUES,
+        get_occurence_counts(folder_path, 'Annotation', search_values,
                              [file for file in files if '.anno' in file],
-                             PLOTS_DIR)
+                             output_dir, plots_dir)
         print 'Done. Output file is: "{}"'.format(fname + '-results.txt')
