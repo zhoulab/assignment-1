@@ -6,15 +6,15 @@ BASE_DIR = os.path.dirname(os.getcwd())
 
 
 def parse_anno_file(fpath):
-    """
-        Returns a generator object with each row in dictionary format.
+    """Return each row in a dictionary format.
+    Use name 'PeakID' for column name rather than 'PeakID (...)'
 
-        Returns
-        -------
-        ({header1: value1-1, header2: value1-2, ...},
-         {header1: value2-1, header2: value2-2, ...}, ...)
-            Where header(j) is the jth header in the file and
-            value(i)-(j) is the value under the jth header and ith row in file.
+    Returns
+    -------
+    ({header1: value1-1, header2: value1-2, ...},
+     {header1: value2-1, header2: value2-2, ...}, ...)
+        Where header(j) is the jth header in the file and
+        value(i)-(j) is the value under the jth header and ith row in file.
     """
     with open(fpath) as f:
         reader = csv.reader(f, delimiter='\t')
@@ -24,69 +24,58 @@ def parse_anno_file(fpath):
             yield dict(zip(header, (value for value in row)))
 
 
-def get_occurence_counts(fpaths, col, values, output_dir, plots_dir, val_colors):
-    """
-        Data is fetched from get_count_lists and stored in a variable.
-        Writes data into CSV file.
+def generate_occurence_count_files(fpaths, col, values, output_dir,
+                                   plots_dir, val_colors):
+    """Write occurence count data into tab-delimited txt file.
+    Data is fetched from get_occurences and stored in `file_data`.
 
-        Parameters
-        ----------
-        fpaths: list of filepaths
-            Filepaths of .anno files to search
-            must be under the same folder
-        col: str
-            Column of .anno file to search under
-        values: list of str
-            Values to search for under col
+    Parameters
+    ----------
+    fpaths : list of str
+        Filepaths of .anno files to search.
+        All must be under the same folder (see variable `folder`)
+    col : str
+        Column of .anno file to search under
+    values : list of str
+        Values to search for under `col`
 
-        Data Structures
-        ---------------
-        data: {value1: [count_f1, count_f2, ...],
-               value2: [count_f1, count_f2, ...], ...}
-        file_data: {fname1: {v1: count_v1, v2: count_v2, ...},
-                    fname2: {v1: count_v1, v2: count_v2, ...}, ...}
+    Variables
+    ---------
+    folder : str
+        name of common directory amongst files in `fpaths`
+    files : list of str
+        filenames without trailing ".anno"
+    file_data : {fname1: OD{v1: count_v1, v2: count_v2, ...},
+                 fname2: OD{v1: count_v1, v2: count_v2, ...}, ...}
     """
     folder = os.path.basename(os.path.dirname(fpaths[0]))
-    files = [os.path.basename(path) for path in fpaths]
+    files = [os.path.basename(path)[:-5] for path in fpaths]
     with open(os.path.join(output_dir, folder + '-results.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
-        filewriter.writerow(['Values'] + [fname[:fname.index(".anno")]
-                                          for fname in files])
-        data = []
+        filewriter.writerow(['Values'] + files)
+        print 'Getting counts...'
+        file_data = {fname: OrderedDict() for fname in files}
+        for fpath, fname in zip(fpaths, files):
+            anno_file_dict = parse_anno_file(fpath)
+            for value in values:
+                file_data[fname][value] = len(list(get_occurences(anno_file_dict,
+                                              col, value, fpath, exact=False)))
         for value in values:
-            print 'Getting counts for value: ' + value + '...'
-            row = list(get_count(col, value, fpaths))
-            filewriter.writerow([value] + row)
-            data.append(row)
-        print 'Getting column totals...'
-        filewriter.writerow(['Total'] + [sum(x) for x in zip(*data)])
-
-        print 'Making pie plots'
-        file_data = {files[i]: OrderedDict(zip(values, file_counts))
-                     for i, file_counts in enumerate(zip(*data))}
-        pie_plot(file_data, values, val_colors, plots_dir)
+            filewriter.writerow([value] + [file_data[fname][value]
+                                           for fname in files])
+        filewriter.writerow(['Total'] + [sum(file_data[fname].values())
+                                         for fname in files])
+    print 'Creating pie plots...'
+    generate_pie_plots(file_data, values, val_colors, plots_dir)
 
 
-def get_count(col, value, filepaths):
-    """
-        Returns
-        -------
-        (count_f1, count_f2, ...)
-            Generator object of counts for instances of *value* under *col*
-            (value does not have to be exact match)
-    """
-    for filepath in filepaths:
-        yield len(list(get_occurences(col, value, filepath, exact=False)))
-
-
-def pie_plot(file_data, values, colors, plots_dir):
+def generate_pie_plots(file_data, values, colors, plots_dir):
     """Create pie plots for each file in `file_data.keys()`
 
     Parameters
     ----------
     file_data : dict
-        {fname1: {v1: count_v1, v2: count_v2, ...},
-         fname2: {v1: count_v1, v2: count_v2, ...}, ...}
+        see `generate_occurence_counts()`
     values : list of str
     colors : list of str
         hex colors for corresponding element in ordered `values`
@@ -110,7 +99,7 @@ def pie_plot(file_data, values, colors, plots_dir):
         ax.axis('equal')
 
         counts = [file_data[file][value] for value in values]
-        plt.title(file[:-5])
+        plt.title(file)
         wedges, texts = plt.pie(counts, colors=colors, startangle=90)
         for w in wedges:
             w.set_linewidth(0)
@@ -118,30 +107,33 @@ def pie_plot(file_data, values, colors, plots_dir):
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
 
-        labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] / float(sum(file_data[file].values())))
+        labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] /
+                                        float(sum(file_data[file].values())))
                   for value in values]
-        ax.legend(wedges, labels, loc='center left', bbox_to_anchor=(1, .5), prop=font_props)
-        plt.savefig(os.path.join(plots_dir, file[:-5] + '.jpg'))
+        ax.legend(wedges, labels, loc='center left',
+                  bbox_to_anchor=(1, .5), prop=font_props)
+        plt.savefig(os.path.join(plots_dir, file + '.jpg'))
         plt.gcf().clear()
 
 
-def get_occurences(col, values, filepath, exact=True):
-    """
-        Parameters
-        ----------
-        col: str
-        values: str or list
-        filepath: str
+def get_occurences(anno_file_dict, col, values, fpath, exact=True):
+    """Return rows containing matching `values` under `col`
+    Parameters
+    ----------
+    col : str
+    values : str or list
+    fpath : str
+    exact : bool
+        define whether occurences should partially contain
+        or match `values` exactly.
 
-        Returns
-        -------
-        (row1, row2, ...)
-            Iterable of rows containing matching *value* under *col*.
+    Returns
+    -------
+    generator of dicts
     """
     if type(values) is str:
         values = [values]
-    file_data = parse_anno_file(filepath)
-    for row in file_data:
+    for row in anno_file_dict:
         if exact:
             if row[col] in values:
                 yield row
@@ -150,7 +142,8 @@ def get_occurences(col, values, filepath, exact=True):
                 yield row
 
 
-def do_anno_analysis():
+def do_anno_count():
+    """Generate count files and pie plots with pre-defined parameters"""
     search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
                      'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
@@ -172,8 +165,8 @@ def do_anno_analysis():
                        for f in next(os.walk(folder_path))[2]
                        if '.anno' in f]
 
-        get_occurence_counts(anno_fpaths, 'Annotation', search_values,
-                             output_dir, plots_dir, val_colors)
+        generate_occurence_count_files(anno_fpaths, 'Annotation', search_values,
+                                       output_dir, plots_dir, val_colors)
         print 'Done. Output file is: "{}"'.format(dir_name + '-results.txt')
 
 
