@@ -5,6 +5,15 @@ from collections import OrderedDict
 BASE_DIR = os.path.dirname(os.getcwd())
 
 
+def create_dir(dirpath):
+    """Return `dirpath` and create if it doesn't exist
+    **The directory `os.path.dirname(dirpath)` must already exist.
+    """
+    if not os.path.exists(dirpath):
+        os.makedirs(dirpath)
+    return dirpath
+
+
 def parse_anno_file(fpath):
     """Return each row in a dictionary format.
     Use name 'PeakID' for column name rather than 'PeakID (...)'
@@ -56,9 +65,9 @@ def generate_occurence_count_files(fpaths, col, values, output_dir,
         print 'Getting counts...'
         file_data = {fname: OrderedDict() for fname in files}
         for fpath, fname in zip(fpaths, files):
-            anno_file_dict = parse_anno_file(fpath)
+            anno_file_rows = list(parse_anno_file(fpath))
             for value in values:
-                file_data[fname][value] = len(list(get_occurences(anno_file_dict,
+                file_data[fname][value] = len(list(get_occurences(anno_file_rows,
                                               col, value, fpath, exact=False)))
         for value in values:
             filewriter.writerow([value] + [file_data[fname][value]
@@ -116,10 +125,12 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
         plt.gcf().clear()
 
 
-def get_occurences(anno_file_dict, col, values, fpath, exact=True):
+def get_occurences(anno_file_rows, col, values, fpath, exact=True):
     """Return rows containing matching `values` under `col`
     Parameters
     ----------
+    anno_file_rows : iterable of dict
+        see `parse_anno_file`
     col : str
     values : str or list
     fpath : str
@@ -133,7 +144,7 @@ def get_occurences(anno_file_dict, col, values, fpath, exact=True):
     """
     if type(values) is str:
         values = [values]
-    for row in anno_file_dict:
+    for row in anno_file_rows:
         if exact:
             if row[col] in values:
                 yield row
@@ -143,30 +154,32 @@ def get_occurences(anno_file_dict, col, values, fpath, exact=True):
 
 
 def do_anno_count():
-    """Generate count files and pie plots with pre-defined parameters"""
+    """Generate count files and pie plots with pre-defined parameters.
+    Variables
+    ---------
+    fodlers : list of str
+        sample folders to use (under data/Annos)
+    """
+    folders = ['dm6_anno']
+    folder_paths = [os.path.join(BASE_DIR, 'data/Annos', f)
+                    for f in folders]
     search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
                      'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
                   '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
-    output_dir = os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results')
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    plots_dir = os.path.join(output_dir, 'plots')
-    if not os.path.exists(plots_dir):
-        os.makedirs(plots_dir)
+    output_dir = create_dir(os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results'))
+    plots_dir = create_dir(os.path.join(output_dir, 'plots'))
 
-    folders = [os.path.join(BASE_DIR, 'data/Annos', f)
-               for f in ['Dm', 'Mammals']]
-    for folder_path in folders:
+    for folder_path in folder_paths:
         dir_name = os.path.basename(folder_path)
+        plots_subdir = create_dir(os.path.join(plots_dir, dir_name + '_plots'))
         print ('{}: finding occurences of values under the '
                '"Annotation" column... ').format(dir_name)
         anno_fpaths = [os.path.join(folder_path, f)
                        for f in next(os.walk(folder_path))[2]
                        if '.anno' in f]
-
         generate_occurence_count_files(anno_fpaths, 'Annotation', search_values,
-                                       output_dir, plots_dir, val_colors)
+                                       output_dir, plots_subdir, val_colors)
         print 'Done. Output file is: "{}"'.format(dir_name + '-results.txt')
 
 
