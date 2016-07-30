@@ -153,33 +153,57 @@ def get_occurences(anno_file_rows, col, values, fpath, exact=True):
                 yield row
 
 
+def prompt_for_folders(dirpath):
+    """Prompt user for list of folders from `dirpath`.
+
+    Return list of folder names if all are valid subdirectories of `dirpath`,
+    otherwise `False` and display invalid inputs.
+    """
+    all_folders = next(os.walk(dirpath))[1]
+    print 'Input subdirectories of {}'.format(dirpath)
+    folders = raw_input('Enter folder(s) to use, separated by ",": ')
+    folders = [f.strip() for f in folders.split(',')] if folders else []
+    if not folders:
+        print 'No folders specified.'
+    elif not all([f in all_folders for f in folders]):
+        invalid_folders_str = ', '.join([f for f in folders
+                                         if f not in all_folders])
+        print 'Some invalid directories ({})'.format(invalid_folders_str)
+        return False
+    return folders
+
+
 def do_anno_count():
     """Generate count files and pie plots with pre-defined parameters.
     Variables
     ---------
-    fodlers : list of str
+    folders : list of str
         sample folders to use (under data/Annos)
     """
-    folders = ['dm6_anno']
-    folder_paths = [os.path.join(BASE_DIR, 'data/Annos', f)
-                    for f in folders]
+    annos_dir_path = os.path.join(BASE_DIR, 'data/Annos')
+    folders = prompt_for_folders(annos_dir_path)
+    if not folders:
+        return -1
     search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
                      'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
                   '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
-    output_dir = create_dir(os.path.join(BASE_DIR, 'results/P53-ChIPSeq-Anno-results'))
+    output_dir = create_dir(os.path.join(BASE_DIR, 'results',
+                                         'P53-ChIPSeq-Anno-results'))
     plots_dir = create_dir(os.path.join(output_dir, 'plots'))
 
-    for folder_path in folder_paths:
-        dir_name = os.path.basename(folder_path)
-        plots_subdir = create_dir(os.path.join(plots_dir, dir_name + '_plots'))
+    for anno_subdir_name in folders:
+        anno_subdir_path = os.path.join(annos_dir_path, anno_subdir_name)
+        plots_subdir = create_dir(os.path.join(plots_dir,
+                                               anno_subdir_name + '_plots'))
         print ('{}: finding occurences of values under the '
-               '"Annotation" column... ').format(dir_name)
-        anno_fpaths = [os.path.join(folder_path, f)
-                       for f in next(os.walk(folder_path))[2]
+               '"Annotation" column... ').format(anno_subdir_name)
+        anno_fpaths = [os.path.join(anno_subdir_path, f)
+                       for f in next(os.walk(anno_subdir_path))[2]
                        if '.anno' in f]
-        generate_occurence_count_files(anno_fpaths, 'Annotation', search_values,
-                                       output_dir, plots_subdir, val_colors)
-        print 'Done. Output file is: "{}"'.format(dir_name + '-results.txt')
+        generate_occurence_count_files(anno_fpaths, 'Annotation',
+                                       search_values, output_dir,
+                                       plots_subdir, val_colors)
+        print 'Done. Saved at: "{}"'.format(anno_subdir_name + '-results.txt')
 
 
