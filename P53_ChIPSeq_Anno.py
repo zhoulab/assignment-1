@@ -59,7 +59,7 @@ def generate_occurence_count_files(fpaths, col, values, output_dir,
     """
     folder = os.path.basename(os.path.dirname(fpaths[0]))
     files = [os.path.basename(path)[:-5] for path in fpaths]
-    with open(os.path.join(output_dir, folder + '-results.txt'), 'w') as file:
+    with open(os.path.join(output_dir, folder + '-count.txt'), 'w') as file:
         filewriter = csv.writer(file, delimiter='\t')
         filewriter.writerow(['Values'] + files)
         print 'Getting counts...'
@@ -216,13 +216,13 @@ def do_anno_count():
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
                   '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
     output_dir = create_dir(os.path.join(BASE_DIR, 'results',
-                                         'P53-ChIPSeq-Anno-results'))
+                                         'P53-ChIPSeq-Anno-count'))
     plots_dir = create_dir(os.path.join(output_dir, 'plots'))
 
     for anno_subdir_name in folders:
         anno_subdir_path = os.path.join(annos_dir_path, anno_subdir_name)
         plots_subdir = create_dir(os.path.join(plots_dir,
-                                               anno_subdir_name + '_plots'))
+                                               anno_subdir_name + '-count_plots'))
         print ('{}: finding occurences of values under the '
                '"Annotation" column... ').format(anno_subdir_name)
         anno_fpaths = [os.path.join(anno_subdir_path, f)
@@ -231,7 +231,7 @@ def do_anno_count():
         generate_occurence_count_files(anno_fpaths, 'Annotation',
                                        search_values, output_dir,
                                        plots_subdir, val_colors)
-        print 'Done. Saved at: "{}"'.format(anno_subdir_name + '-results.txt')
+        print 'Done. Saved at: "{}"'.format(anno_subdir_name + '-count.txt')
 
 
 def do_remove_repeats():
