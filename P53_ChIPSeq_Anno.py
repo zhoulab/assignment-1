@@ -153,6 +153,33 @@ def get_occurences(anno_file_rows, col, values, fpath, exact=True):
                 yield row
 
 
+def get_no_repeat_lines(anno_file_rows, fpath, desired_cols,
+                        search_col='Detailed Annotation',
+                        categories=None):
+    """
+    Return `desired_cols` from lines that are not
+    in the repetitive sequence regions (repeats)
+
+    Parameters
+    ----------
+    anno_file_rows : iterable of dict
+        see `parse_anno_file`
+    fpath : str
+        filepath of .anno file
+    categories : set of str
+        non-repeat Homer Genomic Annotation categories
+    desired_cols : list
+        columns to return
+    search_col : column that contains that contains 'repeats' information
+    """
+    if not categories:
+        categories = {'TSS', 'TTS', 'exon', "5' UTR", "3' UTR",
+                     'CpG', 'intron', 'Intergenic', 'non-coding'}
+    rows = get_occurences(anno_file_rows, search_col, categories, fpath)
+    for row in rows:
+        yield [row[col] for col in desired_cols]
+
+
 def prompt_for_folders(dirpath):
     """Prompt user for list of folders from `dirpath`.
 
@@ -207,3 +234,39 @@ def do_anno_count():
         print 'Done. Saved at: "{}"'.format(anno_subdir_name + '-results.txt')
 
 
+def do_remove_repeats():
+    """Save .bed files with lines that have
+    Homer Genomic Annotation categories other than repeats.
+
+    Variables
+    ---------
+    folders : list of str
+        sample folders to use (under data/Annos)
+    output_cols : list
+        columns to use for line output
+    """
+    annos_dir_path = os.path.join(BASE_DIR, 'data/Annos')
+    folders = prompt_for_folders(annos_dir_path)
+    if not folders:
+        return -1
+    output_cols = ['Chr', 'Start', 'End', 'PeakID']
+    output_dir = create_dir(os.path.join(BASE_DIR, 'results',
+                                         'P53-ChIPSeq-Anno_remove-repeats'))
+    for anno_subdir_name in folders:
+        anno_subdir_path = os.path.join(annos_dir_path, anno_subdir_name)
+        output_subdir = create_dir(os.path.join(output_dir,
+                                                anno_subdir_name +
+                                                '-no_repeats'))
+        files = next(os.walk(anno_subdir_path))[2]
+        files = [f[:-5] for f in files]  # remove .anno from filenames
+        for fname in files:
+            fpath = os.path.join(anno_subdir_path, fname + '.anno')
+            print 'Processing {}...'.format(fname)
+            anno_file_rows = list(parse_anno_file(fpath))
+            out_file = os.path.join(output_subdir, fname + '-no_repeats.bed')
+            with open(out_file, 'w') as f:
+                fwriter = csv.writer(f, delimiter='\t')
+                fwriter.writerow(output_cols)
+                for line in get_no_repeat_lines(anno_file_rows,
+                                                fpath, output_cols):
+                    fwriter.writerow(line)
