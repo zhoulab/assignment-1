@@ -1,16 +1,21 @@
 # p53-chip-seq-anno
 
-Generate anno parsing results table and figures for P53 project
+Analysis of `.anno` files for P53 project
 
-run script: `python P53_ChIPSeq_Anno.py`
+## Quickstart
+
+This script has multiple processes that can each be run by it's own shell script:
+
+1. `bash run_anno_count`
+2. `bash run_remove_repeats`
 
 ## About
 
-The purpose of this script is identify patterns in annotation distribution (%) from the data source.
+The purpose of this project is to identify patterns in annotation distribution (%) from the data source.
 
 ## Data Source
 
-.anno (tab-delimited text) files from Homer annotation output of P53 ChIP-seq; .bed format files
+`.anno` (tab-delimited text) files from Homer annotation output of P53 ChIP-seq; `.bed` format files
 
 ## Requirements
 

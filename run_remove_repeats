@@ -1,0 +1,2 @@
+#!/bin/bash
+python -c "from P53_ChIPSeq_Anno import do_remove_repeats; do_remove_repeats()"
