@@ -44,8 +44,8 @@ class AnnoFile(object):
                     if col in ['Start', 'End'] and row[col].isdigit():
                         row[col] = int(row[col])
 
-    def get_occurences(self, col, values, exact=True):
-        """Return iterator of row dicts containing matching `values` under `col`
+    def get_occurences(self, col, values, exact=True, ignore_vals=False):
+        """Return generator of row dicts containing matching `values` under `col`
 
         Parameters
         ----------
@@ -55,47 +55,34 @@ class AnnoFile(object):
         exact : bool
             define whether occurences should partially contain
             or match `values` exactly.
+        ignore_vals : bool
+            search for rows NOT containing matching `values` under `col`
         """
         if type(values) is str:
             values = [values]
         for row in self.rows:
-            if exact:
-                if row[col] in values:
+            if not ignore_vals:
+                if ((exact and row[col] in values) or
+                   (not exact and any([val in row[col]
+                                       for val in values]))):
                     yield row
             else:
-                if any([val in row[col] for val in values]):
+                if ((exact and row[col] not in values) or
+                   (not exact and all([val not in row[col]
+                                       for val in values]))):
                     yield row
 
-    def get_no_repeat_lines(self, desired_cols,
-                            search_col='Detailed Annotation',
-                            categories=None):
-        """Return `desired_cols` from lines that are not
-        in the repetitive sequence regions (repeats)
+    def save_rows(self, rows, output_dir, desired_cols=None, save_name=None):
+        """Save a bed-format file in `output_dir` containing `rows`.
 
         Parameters
         ----------
-        categories : set of str
-            non-repeat Homer Genomic Annotation categories
-        desired_cols : iterable of str
-            columns to return
-        search_col : column that contains that contains 'repeats' information
-        """
-        if not categories:
-            categories = {'TSS', 'TTS', 'exon', "5' UTR", "3' UTR",
-                          'CpG', 'intron', 'Intergenic', 'non-coding'}
-        rows = self.get_occurences(search_col, categories)
-        for row in rows:
-            yield [row[col] for col in desired_cols]
-
-    def save_without_repeats(self, output_dir,
-                             desired_cols=None, save_name=None):
-        """Save a bed-format file with lines that are not
-        in the repetitive sequence regions (repeats)
-
-        Parameters
-        ----------
+        rows : iterable of rows
         output_dir : filepath
-            path of diretory to save `save_name` in
+        desired_cols : list of str
+            columns to save with (default all columns)
+        save_name : str
+            filename to save as (default self.filename)
         """
         if not desired_cols:
             desired_cols = self.header
@@ -104,8 +91,8 @@ class AnnoFile(object):
         with open(os.path.join(output_dir, save_name), 'w') as f:
             fwriter = csv.writer(f, delimiter='\t')
             fwriter.writerow(desired_cols)
-            for line in self.get_no_repeat_lines(desired_cols):
-                fwriter.writerow(line)
+            for row in rows:
+                fwriter.writerow([row[col] for col in desired_cols])
 
 
 def create_dir(dirpath):
@@ -311,11 +298,16 @@ def do_gene_search():
 def do_remove_repeats():
     """Save .bed files with lines that have
     Homer Genomic Annotation categories other than repeats.
+    Also save full-row copies of non-repeat lines and repeat lines only
 
     Variables
     ---------
     folders : list of str
         sample folders to use (under data/Annos)
+    categories : set of str
+        non-repeat Homer Genomic Annotation categories
+    search_col : str
+        column that contains that contains 'repeats' information
     output_cols : list
         columns to use for line output
     """
@@ -323,6 +315,9 @@ def do_remove_repeats():
     folders = prompt_for_folders(annos_dir_path)
     if not folders:
         return -1
+    categories = {'TSS', 'TTS', 'exon', "5' UTR", "3' UTR",
+                  'CpG', 'intron', 'Intergenic', 'non-coding'}
+    search_col = 'Detailed Annotation'
     output_cols = ['Chr', 'Start', 'End', 'PeakID']
     output_dir = create_dir(os.path.join(BASE_DIR, 'results',
                                          'P53-ChIPSeq-Anno_remove-repeats'))
@@ -331,15 +326,27 @@ def do_remove_repeats():
         output_subdir = create_dir(os.path.join(output_dir,
                                                 anno_subdir_name +
                                                 '-no_repeats'))
+        full_rows_subdir = create_dir(os.path.join(output_subdir,
+                                                   'no_repeats_full_rows'))
+        repeats_subdir = create_dir(os.path.join(output_subdir,
+                                                 'repeats_only_full_rows'))
         files = [fname for fname in next(os.walk(anno_subdir_path))[2]
                  if '.anno' in fname]
         fpaths = [os.path.join(anno_subdir_path, fname)
                   for fname in files]
-        print fpaths
         for fpath in fpaths:
             anno_obj = AnnoFile(fpath)
             print 'Processing {}...'.format(anno_obj.name)
             out_file = anno_obj.name + '-no_repeats.bed'
-            anno_obj.save_without_repeats(output_subdir,
-                                          desired_cols=output_cols,
-                                          save_name=out_file)
+            full_rows_file = anno_obj.name + '-no_repeats.anno'
+            repeats_file = anno_obj.name + '-repeats_only.anno'
+            rows = list(anno_obj.get_occurences(search_col, categories,
+                                                exact=False))
+            anno_obj.save_rows(rows, output_subdir,
+                               desired_cols=output_cols, save_name=out_file)
+            anno_obj.save_rows(rows, full_rows_subdir,
+                               save_name=full_rows_file)
+            repeat_rows = anno_obj.get_occurences(search_col, categories,
+                                                  exact=False, ignore_vals=True)
+            anno_obj.save_rows(repeat_rows, repeats_subdir,
+                               save_name=repeats_file)
