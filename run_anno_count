@@ -1,2 +1,2 @@
 #!/bin/bash
-python -c "from P53_ChIPSeq_Anno import do_anno_count; do_anno_count()"
+python -u -c "from P53_ChIPSeq_Anno import do_anno_count; do_anno_count()"
