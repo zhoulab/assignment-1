@@ -1,17 +1,14 @@
 # p53-chip-seq-anno
 
-Analysis of `.anno` files for P53 project
+Analysis of annotation files for P53 project
 
 ## Quickstart
 
 This script has multiple processes that can each be run by it's own shell script:
 
-1. `bash run_anno_count`
-2. `bash run_remove_repeats`
-
-## About
-
-The purpose of this project is to identify patterns in annotation distribution (%) from the data source.
+1. `./run_anno_count`
+2. `./run_gene_search`
+3. `./run_remove_repeats`
 
 ## Data Source
 
@@ -19,9 +16,9 @@ The purpose of this project is to identify patterns in annotation distribution (
 
 ## Requirements
 
-1. `matplotlib` (for pie charts)
+1. `matplotlib>=1.4.0` (for pie charts)
 
-All other dependencies are included in the python standard library.
+All other dependencies are included in the Python Standard Library.
 
 ## Directory tree
 
