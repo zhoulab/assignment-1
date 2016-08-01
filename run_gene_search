@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+python -u -c "from P53_ChIPSeq_Anno import do_gene_search; do_gene_search()"

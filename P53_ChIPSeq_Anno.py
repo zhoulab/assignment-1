@@ -39,6 +39,10 @@ class AnnoFile(object):
                            for col_name in reader.next()]
             self.rows = [dict(zip(self.header, row))
                          for row in reader]
+            for row in self.rows:
+                for col in row:
+                    if col in ['Start', 'End'] and row[col].isdigit():
+                        row[col] = int(row[col])
 
     def get_occurences(self, col, values, exact=True):
         """Return iterator of row dicts containing matching `values` under `col`
@@ -111,6 +115,16 @@ def create_dir(dirpath):
     if not os.path.exists(dirpath):
         os.makedirs(dirpath)
     return dirpath
+
+
+def prompt_for_folder(dirpath):
+    """Prompt user for a folder from dirpath."""
+    all_folders = next(os.walk(dirpath))[1]
+    folder = ''
+    while folder not in all_folders:
+        folder = raw_input('Enter folder to use [{}]: '
+                           .format('/'.join(all_folders)))
+    return folder
 
 
 def prompt_for_folders(dirpath):
@@ -210,7 +224,7 @@ def do_anno_count():
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
                   '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
     output_dir = create_dir(os.path.join(BASE_DIR, 'results',
-                                         'P53-ChIPSeq-Anno-count'))
+                                         'P53-ChIPSeq-Anno_count'))
     plots_dir = create_dir(os.path.join(output_dir, 'plots'))
     for anno_folder in folders:
         anno_subdir_path = os.path.join(annos_dir_path, anno_folder)
@@ -243,6 +257,55 @@ def do_anno_count():
         print 'Creating pie plots...',
         generate_pie_plots(file_data, search_values, val_colors, plots_subdir)
         print 'done. Saved at: "{}"'.format(plots_subdir)
+
+
+def do_gene_search():
+    """
+    Data is fetched from get_occurences and stored in a variable
+    then printed in a formatted output.
+
+    Variables
+    ---------
+    gene_name: str
+        Gene name to search for under the column 'Gene Name'
+    files: list of str
+
+    Data Structures
+    ---------------
+    data: [(filename1, [row1, row2, ...]),
+           (filename2, [row1, row2, ...]), ...]
+    """
+    output_dir = create_dir(os.path.join(BASE_DIR, 'results',
+                                         'P53-ChIPSeq-Anno_gene-search'))
+    annos_dir_path = os.path.join(BASE_DIR, 'data/Annos')
+    folder = prompt_for_folder(annos_dir_path)
+    anno_subdir_path = os.path.join(BASE_DIR, 'data/Annos', folder)
+    anno_fpaths = [os.path.join(anno_subdir_path, f)
+                   for f in next(os.walk(anno_subdir_path))[2]
+                   if '.anno' in f]
+
+    print ('Find occurences of a gene under the "Gene Name"'
+           'column for "{}"'.format(folder))
+    gene_input = raw_input('Enter gene name: ')
+    annos = [AnnoFile(fpath) for fpath in anno_fpaths]
+    samples = [anno_obj.name for anno_obj in annos]
+    matched_rows = {anno_obj.name:
+                    list(anno_obj.get_occurences('Gene Name', gene_input))
+                    for anno_obj in annos}
+
+    out_fname = '{}_{}.txt'.format(folder, gene_input)
+    with open(os.path.join(output_dir, out_fname), 'w') as f:
+        fwriter = csv.writer(f, delimiter='\t')
+        fwriter.writerow(['Filename', 'Count',
+                          'Occurences (start, end, length)'])
+        for sample in samples:
+            print ('{}: {} row(s) found with Gene Name={}'
+                   .format(sample, len(matched_rows[sample]), gene_input))
+            occurences = ['({},{},{})'.format(row['Start'], row['End'],
+                                              row['End'] - row['Start'] + 1)
+                          for (i, row) in enumerate(matched_rows[sample])]
+            fwriter.writerow([sample, len(matched_rows[sample]),
+                              ','.join(occurences)])
 
 
 def do_remove_repeats():
