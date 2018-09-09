@@ -6,9 +6,11 @@ Analysis of annotation files for P53 project
 
 This script has multiple processes that can each be run by it's own shell script:
 
-1. `./run_anno_count`
-2. `./run_gene_search`
-3. `./run_remove_repeats`
+1. `./run_anno_count` (output: `../results/P53-ChIPSeq-Anno_count/`)
+2. `./run_gene_search` (output: `../results/P53-ChIPSeq-Anno_gene-search/`)
+3. `./run_remove_repeats` (output: `../results/P53-ChIPSeq-Anno_remove-repeats/`)
+
+See `processes.md` for individual details.
 
 ## Data Source
 
