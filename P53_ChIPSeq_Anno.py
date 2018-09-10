@@ -177,9 +177,10 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
         labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] /
                                         float(sum(file_data[file].values())))
                   for value in values]
-        ax.legend(wedges, labels, loc='center left',
-                  bbox_to_anchor=(1, .5), prop=font_props)
-        plt.savefig(os.path.join(plots_dir, file + '.png'))
+        legend = ax.legend(wedges, labels, loc='center left',
+                           bbox_to_anchor=(1, .5), prop=font_props)
+        plt.savefig(os.path.join(plots_dir, file + '.png'),
+                    bbox_extra_artists=(legend,), bbox_inches='tight')
         plt.gcf().clear()
 
 
