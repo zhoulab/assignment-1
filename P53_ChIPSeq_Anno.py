@@ -147,6 +147,8 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
     plots_dir : filepath (str)
         directory to save plot JPEGs
     """
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     from matplotlib.font_manager import FontProperties
 
@@ -177,7 +179,7 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
                   for value in values]
         ax.legend(wedges, labels, loc='center left',
                   bbox_to_anchor=(1, .5), prop=font_props)
-        plt.savefig(os.path.join(plots_dir, file + '.jpg'))
+        plt.savefig(os.path.join(plots_dir, file + '.png'))
         plt.gcf().clear()
 
 
