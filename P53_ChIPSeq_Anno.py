@@ -209,8 +209,8 @@ def do_anno_count():
     folders = prompt_for_folders(annos_dir_path)
     if not folders:
         return -1
-    search_values = ['non-coding', 'Intergenic', 'intron', 'exon',
-                     'promoter-TSS', 'TTS', "5' UTR", "3' UTR"]
+    search_values = ['Intergenic', 'intron', 'exon', 'promoter-TSS',
+                     'TTS', "5' UTR", "3' UTR", 'non-coding']
     val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
                   '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
     output_dir = create_dir(os.path.join(BASE_DIR, 'results',
