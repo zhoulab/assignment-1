@@ -211,8 +211,8 @@ def do_anno_count():
         return -1
     search_values = ['Intergenic', 'intron', 'exon', 'promoter-TSS',
                      'TTS', "5' UTR", "3' UTR", 'non-coding']
-    val_colors = ['#4D4D4D', '#5DA5DA', '#FAA43A', '#60BD68',
-                  '#F17CB0', '#B2912F', '#B276B2', '#DECF3F']
+    val_colors = ['#5DA5DA', '#FAA43A', '#60BD68', '#F17CB0',
+                  '#B2912F', '#B276B2', '#DECF3F', '#4D4D4D']
     output_dir = create_dir(os.path.join(BASE_DIR, 'results',
                                          'P53-ChIPSeq-Anno_count'))
     plots_dir = create_dir(os.path.join(output_dir, 'plots'))
