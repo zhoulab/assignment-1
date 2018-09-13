@@ -1,6 +1,16 @@
 import os
 import csv
+import numpy as np
 from collections import OrderedDict
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
+
+font_props = FontProperties()
+font_props.set_size('small')
+
 
 BASE_DIR = os.path.dirname(os.getcwd())
 
@@ -147,14 +157,6 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
     plots_dir : filepath (str)
         directory to save plot JPEGs
     """
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    from matplotlib.font_manager import FontProperties
-
-    font_props = FontProperties()
-    font_props.set_size('small')
-
     for file in file_data.keys():
         if sorted(file_data[file].keys()) != sorted(values):
             print 'Search values do not match for {}.'.format(file)
@@ -167,20 +169,17 @@ def generate_pie_plots(file_data, values, colors, plots_dir):
 
         counts = [file_data[file][value] for value in values]
         plt.title(file)
-        wedges, texts = plt.pie(counts, colors=colors, startangle=90)
+        wedges, texts, autotexts = plt.pie(counts, colors=colors, startangle=270,
+                                           autopct='%1.1f%%')
         for w in wedges:
             w.set_linewidth(0)
+        for i, (wedge, txt) in enumerate(zip(wedges, autotexts)):
+            if (wedge.theta2 - wedge.theta1) < 18.:
+                txt.set_text('')
 
         box = ax.get_position()
         ax.set_position([box.x0, box.y0, box.width * 0.8, box.height])
-
-        labels = ['{} ({:.1f}%)'.format(value, 100 * file_data[file][value] /
-                                        float(sum(file_data[file].values())))
-                  for value in values]
-        legend = ax.legend(wedges, labels, loc='center left',
-                           bbox_to_anchor=(1, .5), prop=font_props)
-        plt.savefig(os.path.join(plots_dir, file + '.png'),
-                    bbox_extra_artists=(legend,), bbox_inches='tight')
+        plt.savefig(os.path.join(plots_dir, file + '.png'))
         plt.gcf().clear()
 
 
@@ -205,6 +204,7 @@ def do_anno_count():
     file_data : dict
         see `generate_occurence_counts()`
     """
+    import pylab
     annos_dir_path = os.path.join(BASE_DIR, 'data/Annos')
     folders = prompt_for_folders(annos_dir_path)
     if not folders:
@@ -244,8 +244,15 @@ def do_anno_count():
             filewriter.writerow(['Total'] + [sum(file_data[fname].values())
                                              for fname in fnames])
         print 'done. Saved at: "{}"'.format(anno_folder + '-count.txt')
-        print 'Creating pie plots...',
+        print 'Creating pie plots...'
         generate_pie_plots(file_data, search_values, val_colors, plots_subdir)
+        print 'Generating legend...'
+        fig = pylab.figure()
+        figlegend = pylab.figure(figsize=(3, 2))
+        ax = fig.add_subplot(111)
+        wedges, texts = ax.pie(np.arange(len(search_values)), colors=val_colors)
+        figlegend.legend(wedges, search_values, 'center')
+        figlegend.savefig(os.path.join(plots_subdir, 'legend.png'))
         print 'done. Saved at: "{}"'.format(plots_subdir)
 
 
